@@ -129,6 +129,67 @@ print(data)
 | `GET /api/v1/packets/{packetid}/{token}/{ts}` | пакет + його канали + абоненти |
 | `GET /api/v1/channels/{channelid}/{token}/{ts}` | канал + його пакети + клієнти |
 
+### Перевірка оновлень і значення з config
+
+У системі є таблиця `config`, де кожен параметр зберігає значення і час своєї
+останньої зміни. Якщо дочірньому сервісу треба знати, коли щось оновилось (скажімо,
+вирішити, чи перечитувати список абонентів), є кілька зручних ендпоінтів.
+
+Підтримувані ключі:
+
+`user_list`, `services_user`, `services`, `free_list`, `black_list`, `channels`,
+`chan_packs`, `serv_packets`, `packets`, `custom_ip_packs`, `custom_aid_packs`.
+
+| Метод | Опис |
+|---|---|
+| `GET /api/v1/config/{token}/{ts}` | усі ці параметри зі значенням, хешем і часом оновлення |
+| `GET /api/v1/config/{group}/{token}/{ts}` | вибірка за групою (див. нижче) |
+| `GET /api/v1/updates/{token}/{ts}` | лише час останніх оновлень усіх параметрів |
+| `GET /api/v1/updates/{group}/{token}/{ts}` | час оновлень лише для групи чи ключа |
+
+У якості `{group}` можна вказати:
+
+- `core` — три головні зрізи разом: `user_list`, `services_user`, `services`;
+- `all` — всі дозволені ключі;
+- або конкретний ключ, наприклад `user_list`, `services`, `black_list`.
+
+Тобто трійку `user_list` + `services_user` + `services` можна взяти одним запитом
+(`core`), або по одному (`user_list`, `services_user`, `services`).
+
+Приклад відповіді для `updates/core`:
+
+```json
+{
+  "ok": true,
+  "server_time": 1793718601,
+  "updated_ts": {
+    "user_list": 1793727901,
+    "services_user": 1793718601,
+    "services": 1793715001
+  }
+}
+```
+
+`updated_ts` — unix-час останньої зміни кожного ключа (або `null`, якщо ключ ще не
+заданий). Порівнюючи `server_time` з `updated_ts`, клієнт вирішує, чи дані застаріли.
+
+`config` версія віддає те саме, але розширено — значення і хеш:
+
+```json
+{
+  "ok": true,
+  "group": "core",
+  "found": 3,
+  "server_time": 1793718601,
+  "config": {
+    "user_list": { "param": "user_list", "value": "1793727901",
+                   "value_hash": "...", "date": "2026-11-01 12:00:00",
+                   "ts": 1793727901, "is_set": true }
+  },
+  "updated_ts": { "user_list": 1793727901 }
+}
+```
+
 ### Пошук клієнта
 
 Загальний запит повертає все, що знайдено по клієнту: сервіси, пакети й канали.
